@@ -4,140 +4,145 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FORM — Crafted in Motion</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;1,400&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
   :root {
     --gold:    #b8985a;
-    --crimson: #9b2335;
+    --crimson: #c94050;
     --white:   #f0ece4;
-    --muted:   rgba(240,236,228,0.42);
+    --muted:   rgba(240,236,228,0.4);
     --dark:    #08080a;
   }
 
-  /* CRITICAL: Do NOT set overflow:hidden on html or body — it breaks position:sticky */
   html { background: var(--dark); }
-  body { background: var(--dark); color: var(--white); font-family: 'Courier Prime', monospace; }
 
-  /* Scroll height — this is what creates the scroll distance */
-  #scroll-track { height: 700vh; }
+  /* CRITICAL: no overflow:hidden on body/html — kills sticky */
+  body {
+    background: var(--dark);
+    color: var(--white);
+    font-family: 'Courier Prime', monospace;
+  }
 
-  /* Sticky container — stays pinned while #scroll-track scrolls past */
-  #scene {
+  /* ── Scroll spacer — drives the whole experience ── */
+  #spacer { height: 700vh; }
+
+  /* ── Sticky stage ── */
+  #stage {
     position: sticky;
     top: 0;
     width: 100%;
     height: 100vh;
-    overflow: clip; /* clip is safe; hidden breaks sticky in Safari/Chrome */
+    overflow: clip;
   }
 
-  #vid {
+  /* ── Canvas: the actual frame renderer ── */
+  #canvas {
     position: absolute;
     inset: 0;
-    width: 100%; height: 100%;
-    object-fit: cover;
-    object-position: center;
+    width: 100%;
+    height: 100%;
     display: block;
   }
 
-  /* Gradient overlays */
+  /* ── Gradient overlays ── */
   .ov { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-  .ov-l { background: linear-gradient(to right,  rgba(8,8,10,.75) 0%, transparent 50%); }
-  .ov-r { background: linear-gradient(to left,   rgba(8,8,10,.75) 0%, transparent 50%); }
-  .ov-b { background: linear-gradient(to top,    rgba(8,8,10,.85) 0%, transparent 36%); }
-  .ov-t { background: linear-gradient(to bottom, rgba(8,8,10,.5)  0%, transparent 28%); }
+  .ov-l { background: linear-gradient(to right,  rgba(8,8,10,.8) 0%, transparent 48%); }
+  .ov-r { background: linear-gradient(to left,   rgba(8,8,10,.8) 0%, transparent 48%); }
+  .ov-b { background: linear-gradient(to top,    rgba(8,8,10,.9) 0%, transparent 35%); }
+  .ov-t { background: linear-gradient(to bottom, rgba(8,8,10,.55) 0%, transparent 25%); }
 
-  /* Progress bar */
+  /* ── Progress ── */
   #prog {
     position: absolute; top: 0; left: 0;
     height: 2px; width: 0%;
     background: linear-gradient(90deg, var(--crimson), var(--gold));
-    z-index: 20;
+    z-index: 30; transition: none;
   }
 
-  /* Nav */
+  /* ── Nav ── */
   #nav {
     position: absolute; top: 0; left: 0; right: 0;
-    z-index: 10; display: flex; justify-content: space-between; align-items: center;
+    z-index: 20; display: flex; justify-content: space-between; align-items: center;
     padding: 28px 48px;
   }
-  .brand { font-family:'Playfair Display',serif; font-size:17px; letter-spacing:.4em; text-transform:uppercase; }
-  .nav-tag { font-size:9px; letter-spacing:.35em; text-transform:uppercase; color:var(--muted); }
-
-  /* Text panels */
-  .panel {
-    position: absolute; z-index: 10;
-    opacity: 0; pointer-events: none; max-width: 420px;
-    transition: opacity .65s ease, transform .65s ease;
+  .brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px; letter-spacing: .4em; text-transform: uppercase; color: var(--white);
   }
-  #p0 { bottom:12vh; left:48px;  transform:translateY(18px); }
-  #p1 { top:50%;     left:48px;  transform:translateY(calc(-50% + 18px)); }
-  #p2 { top:50%;     right:48px; transform:translateY(calc(-50% + 18px)); text-align:right; }
-  #p3 { top:50%;     left:50%;   transform:translate(-50%,calc(-50% + 18px)); text-align:center; max-width:520px; }
-  #p4 { bottom:12vh; right:48px; transform:translateY(18px); text-align:right; }
+  .nav-r { font-size: 9px; letter-spacing: .35em; text-transform: uppercase; color: var(--muted); }
 
-  .panel.on          { opacity:1; }
-  #p0.on             { transform:translateY(0); }
-  #p1.on             { transform:translateY(-50%); }
-  #p2.on             { transform:translateY(-50%); }
-  #p3.on             { transform:translate(-50%,-50%); }
-  #p4.on             { transform:translateY(0); }
+  /* ── Text panels ── */
+  .panel {
+    position: absolute; z-index: 15;
+    opacity: 0; pointer-events: none; max-width: 400px;
+    will-change: opacity;
+    transition: opacity .5s ease;
+  }
 
-  .ey { display:block; font-size:9px; letter-spacing:.5em; text-transform:uppercase; color:var(--gold); margin-bottom:13px; }
-  .panel h2 { font-family:'Playfair Display',serif; font-size:clamp(30px,4vw,56px); font-weight:400; line-height:1.1; margin-bottom:14px; }
-  .panel h2 em  { font-style:italic; color:var(--gold); }
-  .panel h2 .red { font-style:italic; color:#c94050; }
-  .rule { display:block; height:1px; width:34px; background:var(--gold); margin-bottom:14px; }
-  #p2 .rule, #p4 .rule { margin-left:auto; }
-  #p3 .rule { margin:0 auto 14px; }
-  .panel p { font-size:11px; line-height:2; color:var(--muted); letter-spacing:.04em; }
+  #p0 { bottom: 13vh; left: 48px; }
+  #p1 { top: 50%; left: 48px; transform: translateY(-50%); }
+  #p2 { top: 50%; right: 48px; transform: translateY(-50%); text-align: right; }
+  #p3 { top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; max-width: 500px; }
+  #p4 { bottom: 13vh; right: 48px; text-align: right; }
 
-  /* Dots */
+  .panel.on { opacity: 1; }
+
+  .ey { display: block; font-size: 9px; letter-spacing: .5em; text-transform: uppercase; color: var(--gold); margin-bottom: 13px; }
+  .panel h2 { font-family: 'Playfair Display', serif; font-size: clamp(28px, 3.8vw, 54px); font-weight: 400; line-height: 1.1; margin-bottom: 14px; }
+  .panel h2 em  { font-style: italic; color: var(--gold); }
+  .panel h2 .r  { font-style: italic; color: var(--crimson); }
+  .rule { display: block; height: 1px; width: 32px; background: var(--gold); margin-bottom: 14px; }
+  #p2 .rule, #p4 .rule { margin-left: auto; }
+  #p3 .rule { margin: 0 auto 14px; }
+  .panel p { font-size: 11px; line-height: 2; color: var(--muted); letter-spacing: .04em; }
+
+  /* ── Section dots ── */
   #dots {
-    position:absolute; right:24px; top:50%; transform:translateY(-50%);
-    z-index:10; display:flex; flex-direction:column; gap:10px;
+    position: absolute; right: 22px; top: 50%; transform: translateY(-50%);
+    z-index: 20; display: flex; flex-direction: column; gap: 10px;
   }
   .dot {
-    width:4px; height:4px; border-radius:50%;
-    background:rgba(240,236,228,.2); cursor:pointer; pointer-events:all;
-    transition:background .3s, transform .3s;
+    width: 4px; height: 4px; border-radius: 50%;
+    background: rgba(240,236,228,.18); cursor: pointer; pointer-events: all;
+    transition: background .25s, transform .25s;
   }
-  .dot.on { background:var(--gold); transform:scale(1.8); }
+  .dot.on { background: var(--gold); transform: scale(1.8); }
 
-  /* Frame HUD */
+  /* ── Frame HUD ── */
   #fhud {
-    position:absolute; bottom:28px; left:48px; z-index:10;
-    font-size:9px; letter-spacing:.3em; text-transform:uppercase;
-    color:rgba(240,236,228,.18); font-variant-numeric:tabular-nums;
+    position: absolute; bottom: 26px; left: 48px; z-index: 20;
+    font-size: 9px; letter-spacing: .3em; text-transform: uppercase;
+    color: rgba(240,236,228,.15); font-variant-numeric: tabular-nums;
   }
 
-  /* Scroll hint */
+  /* ── Scroll hint ── */
   #hint {
-    position:absolute; bottom:28px; right:48px;
-    z-index:10; display:flex; flex-direction:column; align-items:center; gap:8px;
-    transition:opacity .5s ease;
+    position: absolute; bottom: 26px; right: 48px;
+    z-index: 20; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    transition: opacity .4s ease;
   }
-  #hint span { font-size:8px; letter-spacing:.4em; text-transform:uppercase; color:var(--muted); writing-mode:vertical-rl; }
-  .hline { width:1px; height:42px; background:linear-gradient(to bottom,var(--gold),transparent); animation:bth 2s ease-in-out infinite; }
-  @keyframes bth { 0%,100%{opacity:.3} 50%{opacity:1} }
+  #hint span { font-size: 8px; letter-spacing: .4em; text-transform: uppercase; color: var(--muted); writing-mode: vertical-rl; }
+  .hline { width: 1px; height: 40px; background: linear-gradient(to bottom, var(--gold), transparent); animation: bth 2s ease-in-out infinite; }
+  @keyframes bth { 0%,100%{opacity:.25} 50%{opacity:.9} }
 
-  /* Grain */
+  /* ── Grain ── */
   body::after {
-    content:''; position:fixed; inset:0; z-index:200; pointer-events:none; opacity:.03;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='g'%3E%3CfeTurbulence baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23g)'/%3E%3C/svg%3E");
+    content: ''; position: fixed; inset: 0; z-index: 100; pointer-events: none; opacity: .025;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)'/%3E%3C/svg%3E");
   }
 
-  /* Loader */
+  /* ── Loader ── */
   #loader {
-    position:fixed; inset:0; background:var(--dark); z-index:999;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px;
-    transition:opacity .8s ease;
+    position: fixed; inset: 0; background: var(--dark); z-index: 9999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+    transition: opacity .7s ease;
   }
-  .lb { font-family:'Playfair Display',serif; font-size:24px; letter-spacing:.5em; text-transform:uppercase; }
-  .lt { width:180px; height:1px; background:rgba(240,236,228,.1); overflow:hidden; }
-  #lf { height:100%; width:0%; background:linear-gradient(90deg,var(--crimson),var(--gold)); transition:width .1s linear; }
-  .lp { font-size:9px; letter-spacing:.4em; text-transform:uppercase; color:var(--muted); }
+  .lb { font-family: 'Playfair Display', serif; font-size: 24px; letter-spacing: .5em; text-transform: uppercase; }
+  .lt { width: 200px; height: 1px; background: rgba(240,236,228,.1); }
+  #lf { height: 100%; width: 0%; background: linear-gradient(90deg, var(--crimson), var(--gold)); }
+  .lp { font-size: 9px; letter-spacing: .4em; text-transform: uppercase; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -145,26 +150,24 @@
 <div id="loader">
   <div class="lb">Form</div>
   <div class="lt"><div id="lf"></div></div>
-  <div class="lp" id="ll">Loading &nbsp; 0%</div>
+  <div class="lp" id="ll">Loading &nbsp; 0 / 201</div>
 </div>
 
-<div id="scroll-track">
-  <div id="scene">
+<div id="spacer">
+  <div id="stage">
 
-    <div id="prog"></div>
-
-    <video id="vid" muted playsinline preload="auto">
-      <source src="video.mp4" type="video/mp4">
-    </video>
+    <canvas id="canvas"></canvas>
 
     <div class="ov ov-l"></div>
     <div class="ov ov-r"></div>
     <div class="ov ov-b"></div>
     <div class="ov ov-t"></div>
 
+    <div id="prog"></div>
+
     <nav id="nav">
       <div class="brand">Form</div>
-      <div class="nav-tag">Crafted in Motion</div>
+      <div class="nav-r">Crafted in Motion</div>
     </nav>
 
     <div class="panel on" id="p0">
@@ -178,14 +181,14 @@
       <span class="ey">Material Study I</span>
       <h2>Obsidian<br><em>Gloss</em></h2>
       <span class="rule"></span>
-      <p>A surface so refined it becomes<br>a mirror. Light bends around it,<br>surrendering to its geometry.</p>
+      <p>A surface so refined it becomes a mirror.<br>Light bends around it, surrendering<br>to its geometry.</p>
     </div>
 
     <div class="panel" id="p2">
       <span class="ey">Material Study II</span>
-      <h2>Crimson<br><span class="red">Chrome</span></h2>
+      <h2>Crimson<br><span class="r">Chrome</span></h2>
       <span class="rule"></span>
-      <p>The tension between restraint<br>and desire. Burnished edges<br>that demand to be touched.</p>
+      <p>The tension between restraint and desire.<br>Burnished edges that demand<br>to be touched.</p>
     </div>
 
     <div class="panel" id="p3">
@@ -221,20 +224,23 @@
 </div>
 
 <script>
-(function(){
-  const vid    = document.getElementById('vid');
-  const prog   = document.getElementById('prog');
-  const hint   = document.getElementById('hint');
-  const fhud   = document.getElementById('fhud');
-  const loader = document.getElementById('loader');
-  const lf     = document.getElementById('lf');
-  const ll     = document.getElementById('ll');
-  const track  = document.getElementById('scroll-track');
-  const panels = ['p0','p1','p2','p3','p4'].map(id => document.getElementById(id));
-  const dots   = document.querySelectorAll('.dot');
+(function () {
+  const TOTAL  = 201;
+  const FRAMES = Array.from({length: TOTAL}, (_, i) => `frames/f${String(i+1).padStart(3,'0')}.jpg`);
 
-  const DUR = 8.04, TOTAL = 201;
+  const canvas  = document.getElementById('canvas');
+  const ctx     = canvas.getContext('2d');
+  const loader  = document.getElementById('loader');
+  const lf      = document.getElementById('lf');
+  const ll      = document.getElementById('ll');
+  const prog    = document.getElementById('prog');
+  const hint    = document.getElementById('hint');
+  const fhud    = document.getElementById('fhud');
+  const spacer  = document.getElementById('spacer');
+  const panels  = [0,1,2,3,4].map(i => document.getElementById('p'+i));
+  const dots    = document.querySelectorAll('.dot');
 
+  // Section ranges 0–1
   const secs = [
     [0,    0.12],
     [0.12, 0.32],
@@ -243,86 +249,124 @@
     [0.78, 1.00],
   ];
 
-  // ── Loader ──────────────────────────────────────────────────────
-  function hideLoader(){
-    lf.style.width='100%'; ll.textContent='Ready';
-    setTimeout(()=>{ loader.style.opacity='0'; setTimeout(()=>loader.style.display='none',800); },300);
+  // ── Canvas sizing ────────────────────────────────────────────────
+  function resizeCanvas() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    drawFrame(currentFrame);
   }
-  vid.addEventListener('progress', ()=>{
-    if(vid.buffered.length && vid.duration){
-      const p = Math.min(99,Math.round(vid.buffered.end(vid.buffered.length-1)/vid.duration*100));
-      lf.style.width=p+'%'; ll.textContent=`Loading  ${p}%`;
-    }
-  });
-  vid.addEventListener('canplaythrough', hideLoader, {once:true});
-  setTimeout(hideLoader, 7000);
+  window.addEventListener('resize', resizeCanvas);
 
-  // ── State ────────────────────────────────────────────────────────
-  let rawT=0, smoothT=0;
+  // ── Draw a frame, cover-fit ──────────────────────────────────────
+  let images = new Array(TOTAL);
+  let currentFrame = 0;
 
-  // ── Easing ──────────────────────────────────────────────────────
-  function ease(t){ return t<.5 ? 2*t*t : -1+(4-2*t)*t; }
+  function drawFrame(idx) {
+    const img = images[idx];
+    if (!img || !img.complete) return;
+    const cw = canvas.width, ch = canvas.height;
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    const scale = Math.max(cw / iw, ch / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+    ctx.drawImage(img, dx, dy, dw, dh);
+  }
 
-  function panelOp(i, t){
-    const [s,e]=secs[i];
-    if(t<=s||t>=e) return 0;
-    const local=(t-s)/(e-s), fw=0.2;
-    if(local<fw)     return ease(local/fw);
-    if(local>1-fw)   return ease((1-local)/fw);
+  // ── Preload all frames ───────────────────────────────────────────
+  let loaded = 0;
+
+  function preload() {
+    return new Promise(resolve => {
+      FRAMES.forEach((src, i) => {
+        const img = new Image();
+        img.onload = () => {
+          loaded++;
+          const pct = Math.round(loaded / TOTAL * 100);
+          lf.style.width = pct + '%';
+          ll.textContent = `Loading  ${loaded} / ${TOTAL}`;
+          if (i === 0) { resizeCanvas(); drawFrame(0); } // show first frame ASAP
+          if (loaded === TOTAL) resolve();
+        };
+        img.onerror = () => { loaded++; if (loaded === TOTAL) resolve(); };
+        img.src = src;
+        images[i] = img;
+      });
+    });
+  }
+
+  // ── Panel opacity ────────────────────────────────────────────────
+  function ease(t) { return t < .5 ? 2*t*t : -1+(4-2*t)*t; }
+
+  function panelOp(i, t) {
+    const [s, e] = secs[i];
+    if (t <= s || t >= e) return 0;
+    const local = (t - s) / (e - s), fw = 0.22;
+    if (local < fw)     return ease(local / fw);
+    if (local > 1 - fw) return ease((1 - local) / fw);
     return 1;
   }
 
-  // ── RAF loop — smooth lerp ───────────────────────────────────────
-  function tick(){
-    requestAnimationFrame(tick);
+  // ── Scroll → frame (no lerp needed — images are instant) ─────────
+  let scrollT = 0;
+  let lastFrame = -1;
 
-    // Smooth lerp (0.08 = responsiveness — increase for snappier)
-    smoothT += (rawT - smoothT) * 0.08;
-    const t = Math.max(0, Math.min(1, smoothT));
+  window.addEventListener('scroll', () => {
+    const max = spacer.offsetHeight - window.innerHeight;
+    scrollT = max > 0 ? Math.max(0, Math.min(1, window.scrollY / max)) : 0;
+    update();
+  }, { passive: true });
 
-    // Video scrub
-    const target = t * DUR;
-    if(Math.abs(vid.currentTime - target) > 0.015) vid.currentTime = target;
+  function update() {
+    const t = scrollT;
+    const frameIdx = Math.min(TOTAL - 1, Math.round(t * (TOTAL - 1)));
 
-    // Progress
-    prog.style.width = (t*100).toFixed(1)+'%';
+    // Only redraw if frame changed
+    if (frameIdx !== lastFrame) {
+      lastFrame = frameIdx;
+      currentFrame = frameIdx;
+      drawFrame(frameIdx);
+    }
+
+    // Progress bar
+    prog.style.width = (t * 100) + '%';
 
     // Panels
-    let active=0;
-    panels.forEach((p,i)=>{
-      const op = panelOp(i,t);
+    let active = 0;
+    panels.forEach((p, i) => {
+      const op = panelOp(i, t);
       p.style.opacity = op;
-      if(op>0.05){ p.classList.add('on'); active=i; }
-      else        p.classList.remove('on');
+      p.classList.toggle('on', op > 0.05);
+      if (op > 0.4) active = i;
     });
-    dots.forEach((d,i)=>d.classList.toggle('on', i===active));
+    dots.forEach((d, i) => d.classList.toggle('on', i === active));
 
-    // Hint
-    hint.style.opacity = t<0.04 ? String(1-t*25) : '0';
-
-    // Frame counter
-    const f = Math.min(TOTAL, Math.round(t*(TOTAL-1))+1);
-    fhud.textContent = `Frame ${String(f).padStart(3,'0')} / ${TOTAL}`;
+    // UI
+    hint.style.opacity = t < 0.04 ? String(1 - t * 25) : '0';
+    fhud.textContent = `Frame ${String(frameIdx + 1).padStart(3,'0')} / ${TOTAL}`;
   }
 
-  // ── Scroll listener ──────────────────────────────────────────────
-  window.addEventListener('scroll', ()=>{
-    const max = track.offsetHeight - window.innerHeight;
-    rawT = max > 0 ? window.scrollY / max : 0;
-  }, {passive:true});
-
   // ── Dot nav ──────────────────────────────────────────────────────
-  dots.forEach(d=>{
-    d.addEventListener('click', ()=>{
-      const i   = parseInt(d.dataset.s);
-      const mid = (secs[i][0]+secs[i][1])/2;
-      const max = track.offsetHeight - window.innerHeight;
-      window.scrollTo({top: mid*max, behavior:'smooth'});
+  dots.forEach(d => {
+    d.addEventListener('click', () => {
+      const mid = (secs[+d.dataset.s][0] + secs[+d.dataset.s][1]) / 2;
+      const max = spacer.offsetHeight - window.innerHeight;
+      window.scrollTo({ top: mid * max, behavior: 'smooth' });
     });
   });
 
-  vid.currentTime = 0;
-  tick();
+  // ── Boot ─────────────────────────────────────────────────────────
+  resizeCanvas();
+
+  preload().then(() => {
+    ll.textContent = 'Ready';
+    lf.style.width = '100%';
+    setTimeout(() => {
+      loader.style.opacity = '0';
+      setTimeout(() => loader.style.display = 'none', 700);
+    }, 200);
+    update();
+  });
+
 })();
 </script>
 </body>
