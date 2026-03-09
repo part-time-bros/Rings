@@ -3,221 +3,571 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FORM — Crafted in Motion</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;1,400&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<title>ŌRB — Sculptural Objects</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Tenor+Sans&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+/* ─────────────────────────────────────────────
+   RESET & ROOT
+───────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-  :root {
-    --gold:    #b8985a;
-    --crimson: #c94050;
-    --white:   #f0ece4;
-    --muted:   rgba(240,236,228,0.4);
-    --dark:    #08080a;
-  }
+:root {
+  --gold:     #c9a96e;
+  --gold-dim: rgba(201,169,110,0.35);
+  --white:    #f2ede6;
+  --muted:    rgba(242,237,230,0.38);
+  --dim:      rgba(242,237,230,0.15);
+  --dark:     #070709;
+  --darker:   #040406;
+}
 
-  html { background: var(--dark); }
+html { background: var(--dark); scroll-behavior: auto; }
+body {
+  background: var(--dark);
+  color: var(--white);
+  font-family: 'Tenor Sans', sans-serif;
+  cursor: none; /* custom cursor */
+  -webkit-font-smoothing: antialiased;
+}
 
-  /* CRITICAL: no overflow:hidden on body/html — kills sticky */
-  body {
-    background: var(--dark);
-    color: var(--white);
-    font-family: 'Courier Prime', monospace;
-  }
+/* ─────────────────────────────────────────────
+   CUSTOM CURSOR
+───────────────────────────────────────────── */
+#cursor {
+  position: fixed;
+  width: 8px; height: 8px;
+  background: var(--gold);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: width .25s, height .25s, background .25s;
+  mix-blend-mode: screen;
+}
+#cursor-ring {
+  position: fixed;
+  width: 36px; height: 36px;
+  border: 1px solid rgba(201,169,110,0.5);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  transform: translate(-50%, -50%);
+  transition: transform .12s ease, width .3s, height .3s, border-color .3s;
+}
+body:has(a:hover) #cursor, body:has(button:hover) #cursor { width: 14px; height: 14px; }
+body:has(a:hover) #cursor-ring, body:has(button:hover) #cursor-ring {
+  width: 52px; height: 52px; border-color: var(--gold);
+}
 
-  /* ── Scroll spacer — drives the whole experience ── */
-  #spacer { height: 700vh; }
+/* ─────────────────────────────────────────────
+   SCROLL ARCHITECTURE
+   No overflow:hidden on html/body — kills sticky
+───────────────────────────────────────────── */
+#spacer {
+  height: 700vh;
+  position: relative;
+}
 
-  /* ── Sticky stage ── */
-  #stage {
-    position: sticky;
-    top: 0;
-    width: 100%;
-    height: 100vh;
-    overflow: clip;
-  }
+#stage {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: clip;
+}
 
-  /* ── Canvas: the actual frame renderer ── */
-  #canvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    display: block;
-  }
+/* ─────────────────────────────────────────────
+   CANVAS + ZOOM WRAPPER
+───────────────────────────────────────────── */
+#zoom-wrap {
+  position: absolute;
+  inset: -15%; /* extra space so zoom doesn't show edges */
+  will-change: transform;
+  transform-origin: center center;
+}
 
-  /* ── Gradient overlays ── */
-  .ov { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-  .ov-l { background: linear-gradient(to right,  rgba(8,8,10,.8) 0%, transparent 48%); }
-  .ov-r { background: linear-gradient(to left,   rgba(8,8,10,.8) 0%, transparent 48%); }
-  .ov-b { background: linear-gradient(to top,    rgba(8,8,10,.9) 0%, transparent 35%); }
-  .ov-t { background: linear-gradient(to bottom, rgba(8,8,10,.55) 0%, transparent 25%); }
+#canvas {
+  width: 100%; height: 100%;
+  display: block;
+}
 
-  /* ── Progress ── */
-  #prog {
-    position: absolute; top: 0; left: 0;
-    height: 2px; width: 0%;
-    background: linear-gradient(90deg, var(--crimson), var(--gold));
-    z-index: 30; transition: none;
-  }
+/* ─────────────────────────────────────────────
+   GRADIENT OVERLAYS
+───────────────────────────────────────────── */
+.ov { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.ov-l { background: linear-gradient(to right,  rgba(7,7,9,.85) 0%, transparent 45%); }
+.ov-r { background: linear-gradient(to left,   rgba(7,7,9,.85) 0%, transparent 45%); }
+.ov-b { background: linear-gradient(to top,    rgba(7,7,9,.95) 0%, transparent 32%); }
+.ov-t { background: linear-gradient(to bottom, rgba(7,7,9,.65) 0%, transparent 22%); }
 
-  /* ── Nav ── */
-  #nav {
-    position: absolute; top: 0; left: 0; right: 0;
-    z-index: 20; display: flex; justify-content: space-between; align-items: center;
-    padding: 28px 48px;
-  }
-  .brand {
-    font-family: 'Playfair Display', serif;
-    font-size: 17px; letter-spacing: .4em; text-transform: uppercase; color: var(--white);
-  }
-  .nav-r { font-size: 9px; letter-spacing: .35em; text-transform: uppercase; color: var(--muted); }
+/* ─────────────────────────────────────────────
+   PROGRESS LINE
+───────────────────────────────────────────── */
+#prog {
+  position: absolute; top: 0; left: 0;
+  height: 1px; width: 0%;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  z-index: 50;
+}
 
-  /* ── Text panels ── */
-  .panel {
-    position: absolute; z-index: 15;
-    opacity: 0; pointer-events: none; max-width: 400px;
-    will-change: opacity;
-    transition: opacity .5s ease;
-  }
+/* ─────────────────────────────────────────────
+   NAVBAR
+───────────────────────────────────────────── */
+#navbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32px 52px;
+  mix-blend-mode: normal;
+}
 
-  #p0 { bottom: 13vh; left: 48px; }
-  #p1 { top: 50%; left: 48px; transform: translateY(-50%); }
-  #p2 { top: 50%; right: 48px; transform: translateY(-50%); text-align: right; }
-  #p3 { top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; max-width: 500px; }
-  #p4 { bottom: 13vh; right: 48px; text-align: right; }
+.logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 300;
+  letter-spacing: 0.55em;
+  text-transform: uppercase;
+  color: var(--white);
+  text-decoration: none;
+  position: relative;
+}
+.logo::after {
+  content: '';
+  position: absolute;
+  bottom: -3px; left: 0;
+  width: 0; height: 1px;
+  background: var(--gold);
+  transition: width .4s ease;
+}
+.logo:hover::after { width: 100%; }
 
-  .panel.on { opacity: 1; }
+/* Hamburger */
+#menu-btn {
+  background: none; border: none; cursor: none;
+  display: flex; flex-direction: column;
+  gap: 5px; padding: 4px;
+  z-index: 41;
+}
+.bar {
+  display: block;
+  width: 28px; height: 1px;
+  background: var(--white);
+  transition: transform .4s cubic-bezier(.16,1,.3,1), opacity .3s ease, width .4s ease;
+  transform-origin: center;
+}
+#menu-btn.open .bar:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+#menu-btn.open .bar:nth-child(2) { opacity: 0; width: 0; }
+#menu-btn.open .bar:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
-  .ey { display: block; font-size: 9px; letter-spacing: .5em; text-transform: uppercase; color: var(--gold); margin-bottom: 13px; }
-  .panel h2 { font-family: 'Playfair Display', serif; font-size: clamp(28px, 3.8vw, 54px); font-weight: 400; line-height: 1.1; margin-bottom: 14px; }
-  .panel h2 em  { font-style: italic; color: var(--gold); }
-  .panel h2 .r  { font-style: italic; color: var(--crimson); }
-  .rule { display: block; height: 1px; width: 32px; background: var(--gold); margin-bottom: 14px; }
-  #p2 .rule, #p4 .rule { margin-left: auto; }
-  #p3 .rule { margin: 0 auto 14px; }
-  .panel p { font-size: 11px; line-height: 2; color: var(--muted); letter-spacing: .04em; }
+/* Nav right side */
+.nav-right { display: flex; align-items: center; gap: 40px; }
+.nav-tag {
+  font-size: 9px; letter-spacing: .4em;
+  text-transform: uppercase; color: var(--muted);
+}
 
-  /* ── Section dots ── */
-  #dots {
-    position: absolute; right: 22px; top: 50%; transform: translateY(-50%);
-    z-index: 20; display: flex; flex-direction: column; gap: 10px;
-  }
-  .dot {
-    width: 4px; height: 4px; border-radius: 50%;
-    background: rgba(240,236,228,.18); cursor: pointer; pointer-events: all;
-    transition: background .25s, transform .25s;
-  }
-  .dot.on { background: var(--gold); transform: scale(1.8); }
+/* ─────────────────────────────────────────────
+   MENU OVERLAY
+───────────────────────────────────────────── */
+#menu-overlay {
+  position: fixed; inset: 0;
+  background: rgba(4,4,6,0.97);
+  z-index: 39;
+  display: flex;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .5s ease;
+  backdrop-filter: blur(12px);
+}
+#menu-overlay.open { opacity: 1; pointer-events: all; }
 
-  /* ── Frame HUD ── */
-  #fhud {
-    position: absolute; bottom: 26px; left: 48px; z-index: 20;
-    font-size: 9px; letter-spacing: .3em; text-transform: uppercase;
-    color: rgba(240,236,228,.15); font-variant-numeric: tabular-nums;
-  }
+.menu-inner {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  text-align: center;
+}
 
-  /* ── Scroll hint ── */
-  #hint {
-    position: absolute; bottom: 26px; right: 48px;
-    z-index: 20; display: flex; flex-direction: column; align-items: center; gap: 8px;
-    transition: opacity .4s ease;
-  }
-  #hint span { font-size: 8px; letter-spacing: .4em; text-transform: uppercase; color: var(--muted); writing-mode: vertical-rl; }
-  .hline { width: 1px; height: 40px; background: linear-gradient(to bottom, var(--gold), transparent); animation: bth 2s ease-in-out infinite; }
-  @keyframes bth { 0%,100%{opacity:.25} 50%{opacity:.9} }
+.menu-link {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(48px, 8vw, 90px);
+  font-weight: 300;
+  line-height: 1.1;
+  color: rgba(242,237,230,0.12);
+  text-decoration: none;
+  letter-spacing: 0.08em;
+  transition: color .3s ease;
+  position: relative;
+  overflow: hidden;
+  display: block;
+  padding: 6px 0;
+}
+.menu-link:hover { color: var(--white); }
+.menu-link span {
+  display: inline-block;
+  transition: transform .4s cubic-bezier(.16,1,.3,1);
+}
+.menu-link:hover span { transform: translateX(12px); }
+.menu-link::before {
+  content: attr(data-num);
+  position: absolute;
+  left: -60px; top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Tenor Sans', sans-serif;
+  font-size: 10px;
+  letter-spacing: .3em;
+  color: var(--gold);
+  opacity: 0;
+  transition: opacity .3s, left .3s;
+}
+.menu-link:hover::before { opacity: 1; left: -48px; }
 
-  /* ── Grain ── */
-  body::after {
-    content: ''; position: fixed; inset: 0; z-index: 100; pointer-events: none; opacity: .025;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)'/%3E%3C/svg%3E");
-  }
+.menu-footer {
+  position: absolute;
+  bottom: 40px; left: 52px; right: 52px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  letter-spacing: .35em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 
-  /* ── Loader ── */
-  #loader {
-    position: fixed; inset: 0; background: var(--dark); z-index: 9999;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
-    transition: opacity .7s ease;
-  }
-  .lb { font-family: 'Playfair Display', serif; font-size: 24px; letter-spacing: .5em; text-transform: uppercase; }
-  .lt { width: 200px; height: 1px; background: rgba(240,236,228,.1); }
-  #lf { height: 100%; width: 0%; background: linear-gradient(90deg, var(--crimson), var(--gold)); }
-  .lp { font-size: 9px; letter-spacing: .4em; text-transform: uppercase; color: var(--muted); }
+/* ─────────────────────────────────────────────
+   SECTION PANELS — Text content per section
+───────────────────────────────────────────── */
+.panel {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+  max-width: 380px;
+}
+
+/* Positions */
+#p0 { left: 52px; bottom: 14vh; }
+#p1 { left: 52px; top: 50%; transform: translateY(-50%); }
+#p2 { right: 52px; top: 50%; transform: translateY(-50%); text-align: right; }
+#p3 { left: 50%; top: 42%; transform: translate(-50%, -50%); text-align: center; max-width: 480px; }
+#p4 { right: 52px; bottom: 14vh; text-align: right; }
+
+/* Text reveal animation — clip from bottom */
+.reveal-wrap {
+  overflow: hidden;
+  display: block;
+}
+.reveal {
+  display: block;
+  transform: translateY(100%);
+  opacity: 0;
+  transition: transform .8s cubic-bezier(.16,1,.3,1), opacity .6s ease;
+}
+.panel.in .reveal { transform: translateY(0); opacity: 1; }
+
+/* Stagger delays */
+.panel.in .reveal:nth-child(1) { transition-delay: 0s; }
+.panel.in .reveal:nth-child(2) { transition-delay: .08s; }
+.panel.in .reveal:nth-child(3) { transition-delay: .16s; }
+.panel.in .reveal:nth-child(4) { transition-delay: .24s; }
+.panel.in .reveal:nth-child(5) { transition-delay: .32s; }
+
+.eyebrow {
+  font-size: 9px;
+  letter-spacing: .55em;
+  text-transform: uppercase;
+  color: var(--gold);
+  display: block;
+  margin-bottom: 16px;
+}
+
+.panel h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(38px, 5vw, 68px);
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: .02em;
+  margin-bottom: 0;
+}
+.panel h2 em { font-style: italic; color: var(--gold); }
+.panel h2 .cr { font-style: italic; color: #c0394e; }
+
+.rule-wrap { overflow: hidden; margin: 18px 0 16px; }
+.rule {
+  display: block;
+  height: 1px; width: 32px;
+  background: var(--gold);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .6s cubic-bezier(.16,1,.3,1) .3s;
+}
+#p2 .rule, #p4 .rule { transform-origin: right; margin-left: auto; }
+#p3 .rule { transform-origin: center; margin: 18px auto 16px; }
+.panel.in .rule { transform: scaleX(1); }
+
+.panel p {
+  font-size: 11.5px;
+  line-height: 2.1;
+  color: var(--muted);
+  letter-spacing: .06em;
+}
+
+/* ─────────────────────────────────────────────
+   SECTION 0 — HERO specific
+───────────────────────────────────────────── */
+#p0 h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(52px, 7vw, 100px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: .04em;
+}
+#p0 h1 em { font-style: italic; color: var(--gold); }
+
+/* ─────────────────────────────────────────────
+   SCROLL DEPTH INDICATOR (vertical line right)
+───────────────────────────────────────────── */
+#depth-track {
+  position: absolute;
+  right: 28px; top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  height: 140px;
+}
+#depth-line-bg {
+  width: 1px; height: 100%;
+  background: rgba(242,237,230,0.1);
+  position: relative;
+}
+#depth-line-fill {
+  position: absolute;
+  top: 0; left: 0;
+  width: 1px; height: 0%;
+  background: var(--gold);
+  transition: height .05s linear;
+}
+.depth-dots {
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+}
+.ddot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: rgba(242,237,230,0.15);
+  cursor: pointer;
+  pointer-events: all;
+  transition: background .3s, transform .3s;
+  position: relative;
+  z-index: 1;
+}
+.ddot.on { background: var(--gold); transform: scale(1.7); }
+
+/* ─────────────────────────────────────────────
+   BOTTOM HUD
+───────────────────────────────────────────── */
+#bottom-hud {
+  position: absolute;
+  bottom: 28px; left: 52px; right: 52px;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+}
+.hud-left { font-size: 9px; letter-spacing: .3em; text-transform: uppercase; color: var(--dim); font-variant-numeric: tabular-nums; }
+.hud-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.scroll-hint-txt { font-size: 8px; letter-spacing: .4em; text-transform: uppercase; color: var(--muted); transition: opacity .4s; }
+.hint-line { width: 1px; height: 36px; background: linear-gradient(to bottom, var(--gold), transparent); margin-left: auto; animation: bth 2.2s ease-in-out infinite; }
+@keyframes bth { 0%,100%{opacity:.2} 50%{opacity:.8} }
+
+/* ─────────────────────────────────────────────
+   GRAIN + VIGNETTE
+───────────────────────────────────────────── */
+#vignette {
+  position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 35%, rgba(4,4,6,0.55) 100%);
+}
+body::after {
+  content: ''; position: fixed; inset: 0; z-index: 200;
+  pointer-events: none; opacity: .028;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+/* ─────────────────────────────────────────────
+   LOADER
+───────────────────────────────────────────── */
+#loader {
+  position: fixed; inset: 0;
+  background: var(--darker);
+  z-index: 9999;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 28px;
+  transition: opacity .9s ease;
+}
+.load-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 32px; font-weight: 300;
+  letter-spacing: .6em; text-transform: uppercase;
+  color: var(--white);
+}
+.load-track {
+  width: 220px; height: 1px;
+  background: rgba(242,237,230,0.08);
+  position: relative; overflow: hidden;
+}
+#lf {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, #c0394e, var(--gold));
+  transition: width .08s linear;
+}
+.load-num {
+  font-size: 9px; letter-spacing: .5em;
+  text-transform: uppercase; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 </style>
 </head>
 <body>
 
+<!-- Custom cursor -->
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- Loader -->
 <div id="loader">
-  <div class="lb">Form</div>
-  <div class="lt"><div id="lf"></div></div>
-  <div class="lp" id="ll">Loading &nbsp; 0 / 201</div>
+  <div class="load-logo">Ōrb</div>
+  <div class="load-track"><div id="lf"></div></div>
+  <div class="load-num" id="ll">0 / 201</div>
+</div>
+
+<!-- Menu overlay -->
+<div id="menu-overlay">
+  <div class="menu-inner">
+    <a href="#" class="menu-link" data-num="01"><span>Collection</span></a>
+    <a href="#" class="menu-link" data-num="02"><span>Materials</span></a>
+    <a href="#" class="menu-link" data-num="03"><span>Process</span></a>
+    <a href="#" class="menu-link" data-num="04"><span>Acquire</span></a>
+  </div>
+  <div class="menu-footer">
+    <span>© 2026 Ōrb Studio</span>
+    <span>Sculptural Objects</span>
+  </div>
 </div>
 
 <div id="spacer">
   <div id="stage">
 
-    <canvas id="canvas"></canvas>
+    <!-- Canvas wrapped in zoom container -->
+    <div id="zoom-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
 
+    <!-- Overlays -->
     <div class="ov ov-l"></div>
     <div class="ov ov-r"></div>
     <div class="ov ov-b"></div>
     <div class="ov ov-t"></div>
+    <div id="vignette"></div>
 
+    <!-- Progress -->
     <div id="prog"></div>
 
-    <nav id="nav">
-      <div class="brand">Form</div>
-      <div class="nav-r">Crafted in Motion</div>
+    <!-- Navbar -->
+    <nav id="navbar">
+      <a href="#" class="logo">Ōrb</a>
+      <div class="nav-right">
+        <span class="nav-tag">Sculptural Objects</span>
+        <button id="menu-btn" aria-label="Menu">
+          <span class="bar"></span>
+          <span class="bar"></span>
+          <span class="bar"></span>
+        </button>
+      </div>
     </nav>
 
-    <div class="panel on" id="p0">
-      <span class="ey">Collection 2026</span>
-      <h2>Where Form<br>Meets <em>Light</em></h2>
-      <span class="rule"></span>
-      <p>Three objects. Infinite angles.<br>Scroll to reveal the full spectrum.</p>
+    <!-- ── SECTION 0 — HERO ── -->
+    <div class="panel in" id="p0">
+      <div class="reveal-wrap"><span class="reveal eyebrow">Collection 2026</span></div>
+      <div class="reveal-wrap">
+        <h1 class="reveal">Object<br><em>No. 001</em></h1>
+      </div>
+      <div class="rule-wrap"><span class="rule"></span></div>
+      <div class="reveal-wrap"><p class="reveal">Three forms. One obsession.<br>Scroll to enter the collection.</p></div>
     </div>
 
+    <!-- ── SECTION 1 — OBSIDIAN ── -->
     <div class="panel" id="p1">
-      <span class="ey">Material Study I</span>
-      <h2>Obsidian<br><em>Gloss</em></h2>
-      <span class="rule"></span>
-      <p>A surface so refined it becomes a mirror.<br>Light bends around it, surrendering<br>to its geometry.</p>
+      <div class="reveal-wrap"><span class="reveal eyebrow">Material I</span></div>
+      <div class="reveal-wrap">
+        <h2 class="reveal">Obsidian<br><em>Gloss</em></h2>
+      </div>
+      <div class="rule-wrap"><span class="rule"></span></div>
+      <div class="reveal-wrap"><p class="reveal">A lacquered void.<br>Light falls in and never<br>finds its way back out.</p></div>
     </div>
 
+    <!-- ── SECTION 2 — CRIMSON ── -->
     <div class="panel" id="p2">
-      <span class="ey">Material Study II</span>
-      <h2>Crimson<br><span class="r">Chrome</span></h2>
-      <span class="rule"></span>
-      <p>The tension between restraint and desire.<br>Burnished edges that demand<br>to be touched.</p>
+      <div class="reveal-wrap"><span class="reveal eyebrow">Material II</span></div>
+      <div class="reveal-wrap">
+        <h2 class="reveal">Crimson<br><span class="cr">Chrome</span></h2>
+      </div>
+      <div class="rule-wrap"><span class="rule"></span></div>
+      <div class="reveal-wrap"><p class="reveal">The edge between<br>danger and desire.<br>Burnished to provoke.</p></div>
     </div>
 
+    <!-- ── SECTION 3 — GOLD ── -->
     <div class="panel" id="p3">
-      <span class="ey">Material Study III</span>
-      <h2>Molten <em>Gold</em></h2>
-      <span class="rule"></span>
-      <p>Ancient and immediate. A finish that carries the weight<br>of centuries while remaining utterly contemporary.</p>
+      <div class="reveal-wrap"><span class="reveal eyebrow">Material III</span></div>
+      <div class="reveal-wrap">
+        <h2 class="reveal">Molten<br><em>Gold</em></h2>
+      </div>
+      <div class="rule-wrap"><span class="rule"></span></div>
+      <div class="reveal-wrap"><p class="reveal">Poured from centuries of restraint.<br>Worn only by those who know<br>the weight of refinement.</p></div>
     </div>
 
+    <!-- ── SECTION 4 — COLLECTION ── -->
     <div class="panel" id="p4">
-      <span class="ey">The Collection</span>
-      <h2>Three Forms,<br>One <em>Vision</em></h2>
-      <span class="rule"></span>
-      <p>Precision-rendered. Studio-lit.<br>Available in obsidian, crimson,<br>and 22-karat gold leaf.</p>
+      <div class="reveal-wrap"><span class="reveal eyebrow">Acquire</span></div>
+      <div class="reveal-wrap">
+        <h2 class="reveal">The<br><em>Collection</em></h2>
+      </div>
+      <div class="rule-wrap"><span class="rule"></span></div>
+      <div class="reveal-wrap"><p class="reveal">Limited to 99 units per finish.<br>Obsidian. Crimson. Gold.<br>Each signed and numbered.</p></div>
     </div>
 
-    <div id="dots">
-      <div class="dot on" data-s="0"></div>
-      <div class="dot"    data-s="1"></div>
-      <div class="dot"    data-s="2"></div>
-      <div class="dot"    data-s="3"></div>
-      <div class="dot"    data-s="4"></div>
+    <!-- Depth indicator -->
+    <div id="depth-track">
+      <div id="depth-line-bg">
+        <div id="depth-line-fill"></div>
+        <div class="depth-dots">
+          <div class="ddot on"  data-s="0"></div>
+          <div class="ddot"     data-s="1"></div>
+          <div class="ddot"     data-s="2"></div>
+          <div class="ddot"     data-s="3"></div>
+          <div class="ddot"     data-s="4"></div>
+        </div>
+      </div>
     </div>
 
-    <div id="fhud">Frame 001 / 201</div>
-
-    <div id="hint">
-      <div class="hline"></div>
-      <span>Scroll</span>
+    <!-- Bottom HUD -->
+    <div id="bottom-hud">
+      <div class="hud-left" id="fhud">— 001 / 201</div>
+      <div class="hud-right" id="hint-wrap">
+        <span class="scroll-hint-txt">Scroll</span>
+        <div class="hint-line"></div>
+      </div>
     </div>
 
   </div>
@@ -225,23 +575,14 @@
 
 <script>
 (function () {
-  const TOTAL  = 201;
-  const FRAMES = Array.from({length: TOTAL}, (_, i) => `frames/f${String(i+1).padStart(3,'0')}.jpg`);
+  /* ── Config ────────────────────────────────────── */
+  const TOTAL = 201;
+  const FRAMES = Array.from({length: TOTAL}, (_, i) =>
+    `frames/f${String(i+1).padStart(3,'0')}.jpg`
+  );
 
-  const canvas  = document.getElementById('canvas');
-  const ctx     = canvas.getContext('2d');
-  const loader  = document.getElementById('loader');
-  const lf      = document.getElementById('lf');
-  const ll      = document.getElementById('ll');
-  const prog    = document.getElementById('prog');
-  const hint    = document.getElementById('hint');
-  const fhud    = document.getElementById('fhud');
-  const spacer  = document.getElementById('spacer');
-  const panels  = [0,1,2,3,4].map(i => document.getElementById('p'+i));
-  const dots    = document.querySelectorAll('.dot');
-
-  // Section ranges 0–1
-  const secs = [
+  // Section scroll ranges [start, end] 0–1
+  const SECS = [
     [0,    0.12],
     [0.12, 0.32],
     [0.32, 0.55],
@@ -249,30 +590,59 @@
     [0.78, 1.00],
   ];
 
-  // ── Canvas sizing ────────────────────────────────────────────────
+  // Zoom curve per section: [zoomAtStart, zoomAtEnd]
+  // >1 = zoomed in, 1 = normal, <1 = zoomed out
+  const ZOOM = [
+    [1.12, 1.0],   // s0: start close, pull back
+    [1.0,  1.28],  // s1: push IN toward obsidian
+    [1.28, 1.0],   // s2: pull OUT, crimson reveal
+    [1.0,  1.32],  // s3: push IN on gold
+    [1.32, 1.06],  // s4: settle, slight pull back
+  ];
+
+  /* ── Elements ──────────────────────────────────── */
+  const canvas    = document.getElementById('canvas');
+  const ctx       = canvas.getContext('2d');
+  const zoomWrap  = document.getElementById('zoom-wrap');
+  const loader    = document.getElementById('loader');
+  const lf        = document.getElementById('lf');
+  const ll        = document.getElementById('ll');
+  const prog      = document.getElementById('prog');
+  const fhud      = document.getElementById('fhud');
+  const hintWrap  = document.getElementById('hint-wrap');
+  const depthFill = document.getElementById('depth-line-fill');
+  const spacer    = document.getElementById('spacer');
+  const panels    = [0,1,2,3,4].map(i => document.getElementById('p'+i));
+  const ddots     = document.querySelectorAll('.ddot');
+  const menuBtn   = document.getElementById('menu-btn');
+  const menuOverlay = document.getElementById('menu-overlay');
+
+  /* ── Canvas sizing ─────────────────────────────── */
   function resizeCanvas() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+    // Canvas matches the zoom-wrap, which is stage + 30% each side
+    const w = window.innerWidth  * 1.3;
+    const h = window.innerHeight * 1.3;
+    canvas.width  = w;
+    canvas.height = h;
     drawFrame(currentFrame);
   }
   window.addEventListener('resize', resizeCanvas);
 
-  // ── Draw a frame, cover-fit ──────────────────────────────────────
-  let images = new Array(TOTAL);
+  /* ── Draw frame (cover-fit) ────────────────────── */
+  const images = new Array(TOTAL);
   let currentFrame = 0;
 
   function drawFrame(idx) {
     const img = images[idx];
-    if (!img || !img.complete) return;
+    if (!img || !img.complete || !img.naturalWidth) return;
     const cw = canvas.width, ch = canvas.height;
     const iw = img.naturalWidth, ih = img.naturalHeight;
     const scale = Math.max(cw / iw, ch / ih);
     const dw = iw * scale, dh = ih * scale;
-    const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
-    ctx.drawImage(img, dx, dy, dw, dh);
+    ctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
   }
 
-  // ── Preload all frames ───────────────────────────────────────────
+  /* ── Preload ───────────────────────────────────── */
   let loaded = 0;
 
   function preload() {
@@ -281,10 +651,10 @@
         const img = new Image();
         img.onload = () => {
           loaded++;
-          const pct = Math.round(loaded / TOTAL * 100);
-          lf.style.width = pct + '%';
-          ll.textContent = `Loading  ${loaded} / ${TOTAL}`;
-          if (i === 0) { resizeCanvas(); drawFrame(0); } // show first frame ASAP
+          const p = Math.round(loaded / TOTAL * 100);
+          lf.style.width = p + '%';
+          ll.textContent = `${loaded} / ${TOTAL}`;
+          if (i === 0) { resizeCanvas(); drawFrame(0); }
           if (loaded === TOTAL) resolve();
         };
         img.onerror = () => { loaded++; if (loaded === TOTAL) resolve(); };
@@ -294,11 +664,25 @@
     });
   }
 
-  // ── Panel opacity ────────────────────────────────────────────────
+  /* ── Zoom interpolation ────────────────────────── */
+  function getZoom(t) {
+    for (let i = 0; i < SECS.length; i++) {
+      const [s, e] = SECS[i];
+      if (t >= s && t <= e) {
+        const local = (t - s) / (e - s);
+        // Smooth ease
+        const eased = local < .5 ? 2*local*local : -1+(4-2*local)*local;
+        return ZOOM[i][0] + (ZOOM[i][1] - ZOOM[i][0]) * eased;
+      }
+    }
+    return 1;
+  }
+
+  /* ── Panel fade (opacity only, transform is CSS) ── */
   function ease(t) { return t < .5 ? 2*t*t : -1+(4-2*t)*t; }
 
   function panelOp(i, t) {
-    const [s, e] = secs[i];
+    const [s, e] = SECS[i];
     if (t <= s || t >= e) return 0;
     const local = (t - s) / (e - s), fw = 0.22;
     if (local < fw)     return ease(local / fw);
@@ -306,64 +690,111 @@
     return 1;
   }
 
-  // ── Scroll → frame (no lerp needed — images are instant) ─────────
-  let scrollT = 0;
+  /* ── Main update ───────────────────────────────── */
+  let scrollT  = 0;
   let lastFrame = -1;
+  let lastZoom  = -1;
 
+  function update() {
+    const t = scrollT;
+    const frameIdx = Math.min(TOTAL - 1, Math.round(t * (TOTAL - 1)));
+
+    // Canvas frame
+    if (frameIdx !== lastFrame) {
+      lastFrame = frameIdx;
+      currentFrame = frameIdx;
+      drawFrame(frameIdx);
+      fhud.textContent = `— ${String(frameIdx + 1).padStart(3,'0')} / ${TOTAL}`;
+    }
+
+    // Zoom
+    const zoom = getZoom(t);
+    if (Math.abs(zoom - lastZoom) > 0.001) {
+      lastZoom = zoom;
+      // Scale the zoom-wrap FROM its center
+      // The wrap is 130% of viewport; we normalize so scale=1 shows 100% viewport
+      const s = zoom / 1.3; // compensate for the -15% inset
+      zoomWrap.style.transform = `scale(${zoom})`;
+    }
+
+    // Progress
+    prog.style.width = (t * 100).toFixed(2) + '%';
+
+    // Depth fill
+    depthFill.style.height = (t * 100) + '%';
+
+    // Panels + dots
+    let active = 0;
+    panels.forEach((p, i) => {
+      const op = panelOp(i, t);
+      const visible = op > 0.05;
+      p.style.opacity = op;
+      if (visible && !p.classList.contains('in')) p.classList.add('in');
+      if (!visible && p.classList.contains('in'))  p.classList.remove('in');
+      if (op > 0.4) active = i;
+    });
+    ddots.forEach((d, i) => d.classList.toggle('on', i === active));
+
+    // Scroll hint
+    hintWrap.style.opacity = t < 0.04 ? String(1 - t * 25) : '0';
+  }
+
+  /* ── Scroll listener ───────────────────────────── */
   window.addEventListener('scroll', () => {
     const max = spacer.offsetHeight - window.innerHeight;
     scrollT = max > 0 ? Math.max(0, Math.min(1, window.scrollY / max)) : 0;
     update();
   }, { passive: true });
 
-  function update() {
-    const t = scrollT;
-    const frameIdx = Math.min(TOTAL - 1, Math.round(t * (TOTAL - 1)));
-
-    // Only redraw if frame changed
-    if (frameIdx !== lastFrame) {
-      lastFrame = frameIdx;
-      currentFrame = frameIdx;
-      drawFrame(frameIdx);
-    }
-
-    // Progress bar
-    prog.style.width = (t * 100) + '%';
-
-    // Panels
-    let active = 0;
-    panels.forEach((p, i) => {
-      const op = panelOp(i, t);
-      p.style.opacity = op;
-      p.classList.toggle('on', op > 0.05);
-      if (op > 0.4) active = i;
-    });
-    dots.forEach((d, i) => d.classList.toggle('on', i === active));
-
-    // UI
-    hint.style.opacity = t < 0.04 ? String(1 - t * 25) : '0';
-    fhud.textContent = `Frame ${String(frameIdx + 1).padStart(3,'0')} / ${TOTAL}`;
-  }
-
-  // ── Dot nav ──────────────────────────────────────────────────────
-  dots.forEach(d => {
+  /* ── Dot nav ───────────────────────────────────── */
+  ddots.forEach(d => {
     d.addEventListener('click', () => {
-      const mid = (secs[+d.dataset.s][0] + secs[+d.dataset.s][1]) / 2;
+      const i = parseInt(d.dataset.s);
+      const mid = (SECS[i][0] + SECS[i][1]) / 2;
       const max = spacer.offsetHeight - window.innerHeight;
       window.scrollTo({ top: mid * max, behavior: 'smooth' });
     });
   });
 
-  // ── Boot ─────────────────────────────────────────────────────────
+  /* ── Menu ──────────────────────────────────────── */
+  menuBtn.addEventListener('click', () => {
+    const open = menuBtn.classList.toggle('open');
+    menuOverlay.classList.toggle('open', open);
+  });
+  menuOverlay.querySelectorAll('.menu-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      menuBtn.classList.remove('open');
+      menuOverlay.classList.remove('open');
+    });
+  });
+
+  /* ── Custom cursor ─────────────────────────────── */
+  const cursorDot  = document.getElementById('cursor');
+  const cursorRing = document.getElementById('cursor-ring');
+  let cx = 0, cy = 0, rx = 0, ry = 0;
+
+  document.addEventListener('mousemove', e => { cx = e.clientX; cy = e.clientY; });
+
+  function animCursor() {
+    requestAnimationFrame(animCursor);
+    rx += (cx - rx) * 0.12;
+    ry += (cy - ry) * 0.12;
+    cursorDot.style.left  = cx + 'px';
+    cursorDot.style.top   = cy + 'px';
+    cursorRing.style.left = rx + 'px';
+    cursorRing.style.top  = ry + 'px';
+  }
+  animCursor();
+
+  /* ── Boot ──────────────────────────────────────── */
   resizeCanvas();
 
   preload().then(() => {
-    ll.textContent = 'Ready';
-    lf.style.width = '100%';
     setTimeout(() => {
       loader.style.opacity = '0';
-      setTimeout(() => loader.style.display = 'none', 700);
-    }, 200);
+      setTimeout(() => loader.style.display = 'none', 900);
+    }, 300);
     update();
   });
 
