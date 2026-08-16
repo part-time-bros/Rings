@@ -96,6 +96,37 @@ set and stays empty otherwise, so no key ever gets committed.
   `egx_sector_scanner`, `egx_index_analysis`, `egx_stock_screener`,
   `egx_trade_plan`, `egx_fibonacci_retracement`
 
+## No NSE/BSE support — and it fails silently
+
+The technical-analysis and scanner tools (`coin_analysis`,
+`multi_timeframe_analysis`, `top_gainers`, `top_losers`, `bollinger_scan`,
+`rating_filter`, the volume scanners) accept a fixed exchange list: EGX, BIST,
+NASDAQ, NYSE, BURSA, HKEX, SSE, SZSE, TWSE, TPEX, plus crypto venues. `NSE` and
+`BSE` are not on it.
+
+Passing them does **not** raise an error — the request falls back to KuCoin:
+
+- `top_gainers(exchange="NSE")` returns `KUCOIN:PIXUSDT`, a crypto microcap, with
+  no mention of NSE anywhere in the response.
+- `multi_timeframe_analysis(symbol="RELIANCE", exchange="NSE")` returns
+  `"symbol": "KUCOIN:RELIANCE"`, every timeframe reading `"No data"`, and still
+  emits a confident-looking `HOLD/NO TRADE` recommendation block.
+
+Use [India Signals](india-signals.md) for Indian technical analysis instead.
+
+What *does* work for India through this server:
+
+| Tool | Symbol format | Example |
+|------|---------------|---------|
+| `stock_screener` | `country="india"` | 7,652 listings, NSE + BSE, INR |
+| `stock_prices` | `EXCHANGE:SYMBOL`, comma-separated **string** | `"NSE:TCS,BSE:RELIANCE"` |
+| `yahoo_price` | Yahoo suffix | `RELIANCE.NS`, `RELIANCE.BO`, `^NSEI`, `^BSESN` |
+| `backtest_strategy`, `compare_strategies`, `walk_forward_backtest_strategy` | Yahoo suffix | `INFY.NS` |
+
+One ranking quirk worth knowing: in `compare_strategies`, strategies that took
+**zero trades** rank first, because 0% beats a negative return. Check
+`total_trades` before reading the winner.
+
 ## Verifying the install
 
 ```bash

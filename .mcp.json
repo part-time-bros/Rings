@@ -6,6 +6,10 @@
       "env": {
         "MARKETAUX_API_TOKEN": "${MARKETAUX_API_TOKEN:-}"
       }
+    },
+    "india-signals": {
+      "command": "uv",
+      "args": ["run", "--directory", ".", "india-signals-mcp"]
     }
   }
 }
