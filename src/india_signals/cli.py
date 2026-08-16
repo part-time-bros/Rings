@@ -11,6 +11,7 @@ import json
 import sys
 
 from india_signals.signals import DISCLAIMER, analyse, scan
+from india_signals.watch import check as window_check
 
 BAR = {
     "STRONG_BUY": "\033[92m",
@@ -70,12 +71,35 @@ def _print_scan(result: dict) -> None:
     print(f"\n  {result['how_to_read']}")
 
 
+def _print_window(result: dict) -> None:
+    market = result["market"]
+    state = "OPEN" if market["open"] else f"CLOSED ({market['reason']})"
+    print(f"\n{result['symbol']}  —  market {state}, {market['ist_time']}")
+    print(f"  {result['headline']}\n")
+    print(f"  verdict {result['verdict']}  score {result['score']:+.3f}  "
+          f"price {result['price']}  daily RSI {_cell(result['daily_rsi'])}")
+    for side in ("buy", "sell"):
+        print(f"\n  {side} window conditions:")
+        for name, ok in result["checks"][side].items():
+            print(f"    [{'x' if ok else ' '}] {name}")
+    if not market["open"]:
+        print(f"\n  Note: {market['note']} No alert is raised while the market is shut.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="india-signals", description="Live NSE/BSE buy/sell signals."
     )
     parser.add_argument("symbol", nargs="?", help="Bare ticker, e.g. RELIANCE")
     parser.add_argument("--scan", action="store_true", help="Scan the whole exchange")
+    parser.add_argument(
+        "--window", action="store_true", help="Check for an open buy/sell window"
+    )
+    parser.add_argument(
+        "--peek",
+        action="store_true",
+        help="With --window, do not record state (leaves a running watch untouched)",
+    )
     parser.add_argument("--mode", choices=["intraday", "longterm"], default="intraday")
     parser.add_argument("--direction", choices=["buy", "sell"], default="buy")
     parser.add_argument("--exchange", choices=["NSE", "BSE"], default="NSE")
@@ -83,7 +107,14 @@ def main() -> None:
     parser.add_argument("--json", action="store_true", help="Raw JSON output")
     args = parser.parse_args()
 
-    if args.scan:
+    if args.window:
+        if not args.symbol:
+            parser.error("--window needs a SYMBOL")
+        result = window_check(
+            symbol=args.symbol, exchange=args.exchange, record=not args.peek
+        )
+        printer = _print_window
+    elif args.scan:
         result = scan(
             mode=args.mode, direction=args.direction, exchange=args.exchange, limit=args.limit
         )

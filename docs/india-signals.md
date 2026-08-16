@@ -87,10 +87,56 @@ long-term sells". Three tools back it:
 | `stock_signal(symbol, mode, exchange)` | Verdict for one stock with full timeframe breakdown |
 | `scan_market(mode, direction, exchange, limit, …)` | Rank the whole exchange, strongest buys or sells |
 | `compare_signals(symbols, mode, exchange)` | Rank a watchlist strongest to weakest |
+| `check_window(symbol, exchange, record)` | Has a buy/sell window just opened? |
+| `market_open()` | Is the exchange in session right now? |
 
 Symbols are **bare NSE/BSE tickers** — `RELIANCE`, `TCS`, `HDFCBANK`. Not the
 Yahoo form (`RELIANCE.NS`), not exchange-prefixed (`NSE:RELIANCE`); both are
 stripped or rejected with a message telling you which form to use.
+
+## Windows — when is it actually actionable?
+
+A rating is not a window. A stock can sit at BUY for weeks, so alerting on
+"verdict == BUY" fires on every check and tells you nothing. A **window** is a
+transition into a condition worth acting on, and it fires once, when it opens.
+
+```bash
+uv run india-signals CUPID --window          # check and record state
+uv run india-signals CUPID --window --peek   # read-only, leaves a watch untouched
+```
+
+**Buy window** — all four must hold:
+
+| Condition | Why |
+|-----------|-----|
+| intraday composite ≥ +0.10 | rated BUY or better |
+| 5m and 15m both positive | the intraday tape is participating, so the signal isn't just inherited from a strong daily chart |
+| daily RSI < 70 | not blown off — you're buying a pullback, not a top |
+| close > daily EMA50 | the larger uptrend is still intact |
+
+**Sell window** — any one is enough:
+
+| Condition | Why |
+|-----------|-----|
+| intraday composite ≤ -0.10 | rated SELL or worse |
+| close < daily EMA20 | trend break |
+| daily RSI > 80 **and** 1h MACD histogram < 0 | exhaustion rollover — the specific risk in a name trading far above its moving averages |
+
+Sell is evaluated first: an exit outranks an entry when both somehow qualify.
+
+State lives in `~/.cache/india-signals/windows.json`, so `opened` is true only
+on a transition. Poll it on a schedule and you get one alert per window rather
+than one per check.
+
+### Market hours
+
+Every check reports `market.open`, and `alert` is never true while the exchange
+is shut — outside 9:15–15:30 IST on a weekday, the 5m/15m candles are the
+previous session's close, frozen. A weekend reading looks live and is not.
+
+Exchange **holidays are not tracked**. On a holiday the clock check says open
+and the prices are stale. Worth knowing before trusting an alert on a public
+holiday.
 
 ## Liquidity filters
 

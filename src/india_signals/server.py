@@ -7,6 +7,8 @@ from typing import Any, Literal
 from mcp.server.mcpserver import MCPServer
 
 from india_signals.signals import analyse, scan
+from india_signals.watch import check as window_check
+from india_signals.watch import market_status
 
 mcp = MCPServer("India Signals", version="0.1.0")
 
@@ -98,6 +100,43 @@ def compare_signals(
         ],
         "failed": [r["symbol"] for r in results if "error" in r],
     }
+
+
+@mcp.tool()
+def check_window(
+    symbol: str,
+    exchange: Literal["NSE", "BSE"] = "NSE",
+    record: bool = True,
+) -> dict[str, Any]:
+    """Has an actionable buy or sell window just opened for this stock?
+
+    A rating is not a window — a stock can sit at BUY for weeks. This reports
+    ``opened: true`` only on a transition into a buy or sell condition, so
+    polling it on a schedule yields one alert per window, not one per check.
+
+    Buy window needs all of: intraday composite >= +0.10, 5m and 15m both
+    positive, daily RSI < 70, close above the daily EMA50.
+    Sell window needs any of: composite <= -0.10, close below daily EMA20, or
+    daily RSI > 80 with the 1h MACD histogram rolling over.
+
+    Args:
+        symbol: Bare NSE/BSE ticker, e.g. "CUPID".
+        exchange: NSE or BSE.
+        record: Persist the window state so the next call can detect a
+            transition. Pass False for a read-only peek that does not affect
+            a running watch.
+    """
+    return window_check(symbol=symbol, exchange=exchange, record=record)
+
+
+@mcp.tool()
+def market_open() -> dict[str, Any]:
+    """Is the Indian market in session right now?
+
+    Weekday and clock only (9:15–15:30 IST) — exchange holidays are not
+    tracked, so a holiday reads as open while prices are actually stale.
+    """
+    return market_status()
 
 
 def main() -> None:
